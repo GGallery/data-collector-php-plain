@@ -5,7 +5,6 @@ class ApiClient
     private $api_url;
     private $token;
     
-    // Inizializza l'url dell'API e il token
     public function __construct($api_url, $token)
     {
         $this->api_url = $api_url;

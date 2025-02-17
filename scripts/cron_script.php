@@ -15,7 +15,7 @@ try {
     $db = new PDO('mysql:host=localhost;dbname=my_data_collector', 'root', '');
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
+    die("Connessione fallita: " . $e->getMessage());
 }
 
 // Genera il token utilizzando la connessione al database
