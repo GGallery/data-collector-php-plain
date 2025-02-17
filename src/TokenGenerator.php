@@ -1,5 +1,6 @@
 <?php
 
+
 require_once __DIR__ . '/EncryptionHelper.php';
 
 class TokenGenerator
@@ -21,10 +22,9 @@ class TokenGenerator
     // Genera un token criptato
     public function generateToken()
     {
-        // Ottiene il timestamp unix corrente dal database
-        $stmt = $this->db->query('SELECT UNIX_TIMESTAMP() AS timestamp');
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        $current_time = $result['timestamp'];
+        // Ottiene il timestamp unix corrente
+        $current_time = time();
+        // var_dump($current_time);
 
         $combined_token = $this->prefix_token . $current_time;
 
