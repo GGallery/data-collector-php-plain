@@ -19,6 +19,7 @@ return [
     ],
 
     'api' => [
-        'url' => 'http://localhost:8000/api/contacts',
+        'contacts_url' => 'http://localhost:8000/api/contacts',
+        'contacts_extra_url' => 'http://localhost:8000/api/contacts_extra', 
     ],
 ];
