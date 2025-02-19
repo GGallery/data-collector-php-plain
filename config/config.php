@@ -17,7 +17,14 @@ return [
             'password' => '',
         ],
     ],
-
+    'platform' => [
+        'name' => '',
+        'prefix_token' => '', 
+    ],
+    'encryption' => [
+        'key' => '', // Chiave di crittografia
+        'iv' => '', // IV di crittografia
+    ],
     'api' => [
         'contacts_url' => 'http://localhost:8000/api/contacts',
         'contacts_extra_url' => 'http://localhost:8000/api/contacts_extra', 
