@@ -53,7 +53,7 @@ $tokenGenerator = new TokenGenerator($platform_prefix_token, $encryption_key, $e
 $token = $tokenGenerator->generateToken();
 
 // Recupera i dati dal database di partenza 
-$email = 'nome.cogome@mail.it'; // ora è un dato statico ma andrà preso dinamicamente
+$email = 'ilaria.bertolotti@mit.gov.it'; // ora è un dato statico ma andrà preso dinamicamente
 $contactData = getContactData($db_source, $email, $prefix_table, $prefix_field);
 
 if ($contactData) {
@@ -73,6 +73,22 @@ if ($contactData) {
         'cb_codicefiscale' => $contactData[$prefix_field . 'codicefiscale'],
         'cb_datadinascita' => $contactData[$prefix_field . 'datadinascita'],
         'cb_luogodinascita' => $contactData[$prefix_field . 'luogodinascita'],
+        'cb_provinciadinascita' => $contactData[$prefix_field . 'provinciadinascita'],
+        'cb_indirizzodiresidenza' => $contactData[$prefix_field . 'indirizzodiresidenza'],
+        'cb_provdiresidenza' => $contactData[$prefix_field . 'provdiresidenza'],
+        'cb_cap' => $contactData[$prefix_field . 'cap'],
+        'cb_telefono' => $contactData[$prefix_field . 'telefono'],
+        'cb_nome' => $contactData[$prefix_field . 'nome'],
+        'cb_citta' => $contactData[$prefix_field . 'citta'],
+        'cb_professionedisciplina' => $contactData[$prefix_field . 'professionedisciplina'],
+        'cb_ordine' => $contactData[$prefix_field . 'ordine'],
+        'cb_numeroiscrizione' => $contactData[$prefix_field . 'numeroiscrizione'],
+        'cb_reclutamento' => $contactData[$prefix_field . 'reclutamento'],
+        'cb_codicereclutamento' => $contactData[$prefix_field . 'codicereclutamento'],
+        'cb_professione' => $contactData[$prefix_field . 'professione'],
+        'cb_profiloprofessionale' => $contactData[$prefix_field . 'profiloprofessionale'],
+        'cb_settore' => $contactData[$prefix_field . 'settore'],
+        'cb_societa' => $contactData[$prefix_field . 'societa'],
     ];
 
     // Invia i dati al ContactDetailsController
