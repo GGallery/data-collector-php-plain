@@ -29,7 +29,7 @@ $encryption_iv = $config['encryption']['iv'];
 
 // Variabili per le API
 $contacts_url = $config['api']['contacts_url'];
-$contacts_extra_url = $config['api']['contacts_extra_url'];
+$contacts_details_url = $config['api']['contacts_details_url'];
 
 
 // Crea una connessione al database di partenza
@@ -53,7 +53,7 @@ $tokenGenerator = new TokenGenerator($platform_prefix_token, $encryption_key, $e
 $token = $tokenGenerator->generateToken();
 
 // Recupera i dati dal database di partenza 
-$email = '@gmail.com'; // ora è un dato statico ma andrà preso dinamicamente
+$email = 'nome.cogome@mail.it'; // ora è un dato statico ma andrà preso dinamicamente
 $contactData = getContactData($db_source, $email, $prefix_table, $prefix_field);
 
 if ($contactData) {
@@ -67,18 +67,18 @@ if ($contactData) {
     $response = $apiClient->sendData($contact);
     echo "Response from ContactController: " . $response . PHP_EOL;
 
-    // Prepara i dati per il ContactExtraController
-    $contactExtra = [
+    // Prepara i dati per il ContactDetailsController
+    $contactDetails = [
         'cb_cognome' => $contactData[$prefix_field . 'cognome'],
         'cb_codicefiscale' => $contactData[$prefix_field . 'codicefiscale'],
         'cb_datadinascita' => $contactData[$prefix_field . 'datadinascita'],
         'cb_luogodinascita' => $contactData[$prefix_field . 'luogodinascita'],
     ];
 
-    // Invia i dati al ContactExtraController
-    $apiClientExtra = new ApiClient($contacts_extra_url, $token);
-    $responseExtra = $apiClientExtra->sendData($contactExtra);
-    echo "Response from ContactExtraController: " . $responseExtra . PHP_EOL;
+    // Invia i dati al ContactDetailsController
+    $apiClientDetails = new ApiClient($contacts_details_url, $token);
+    $responseDetails = $apiClientDetails->sendData($contactDetails);
+    echo "Response from ContactDetailsController: " . $responseDetails . PHP_EOL;
 } else {
     echo "Nessun dato trovato nel database di partenza.";
 }

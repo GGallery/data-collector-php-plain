@@ -13,7 +13,7 @@ function getContactData($db_source, $email, $prefix_table, $prefix_field) {
         ON {$prefix_table}comprofiler.user_id = {$prefix_table}users.id
         WHERE {$prefix_table}users.email = :email
     ";
-    $stmt = $db_source->prepare($query);
+    $stmt = $db_source->prepare($query); //PDOStatement
     $stmt->bindParam(':email', $email);
     $stmt->execute();
     return $stmt->fetch(PDO::FETCH_ASSOC);
