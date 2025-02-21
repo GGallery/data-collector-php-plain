@@ -30,6 +30,21 @@ $encryption_iv = $config['encryption']['iv'];
 // Variabili per le API
 $contacts_url = $config['api']['contacts_url'];
 $contacts_details_url = $config['api']['contacts_details_url'];
+$system_log_url = $config['api']['system_log_url']; // Aggiungi l'URL per il system log
+
+
+// Funzione per registrare gli errori nel system log
+function logError($file, $function, $message, $email, $platform_name, $system_log_url, $token) {
+    $logData = [
+        'file' => $file,
+        'function_name' => $function,
+        'message' => $message,
+        'email' => $email,
+        'platform_name' => $platform_name,
+    ];
+    $apiClient = new ApiClient($system_log_url, $token);
+    $apiClient->sendData($logData);
+}
 
 
 // Crea una connessione al database di partenza
@@ -53,7 +68,7 @@ $tokenGenerator = new TokenGenerator($platform_prefix_token, $encryption_key, $e
 $token = $tokenGenerator->generateToken();
 
 // Recupera i dati dal database di partenza 
-$email = 'ilaria.bertolotti@mit.gov.it'; // ora è un dato statico ma andrà preso dinamicamente
+$email = 'nome.cognome@.it'; // ora è un dato statico ma andrà preso dinamicamente
 $contactData = getContactData($db_source, $email, $prefix_table, $prefix_field);
 
 if ($contactData) {
@@ -63,9 +78,13 @@ if ($contactData) {
     ];
 
     // Invia i dati al ContactController
-    $apiClient = new ApiClient($contacts_url, $token);
-    $response = $apiClient->sendData($contact);
-    echo "Response from ContactController: " . $response . PHP_EOL;
+    try {
+        $apiClient = new ApiClient($contacts_url, $token);
+        $response = $apiClient->sendData($contact);
+        echo "Response from ContactController: " . $response . PHP_EOL;
+    } catch (Exception $e) {
+        logError(__FILE__, __FUNCTION__, $e->getMessage(), $email, $platform_prefix_token, $system_log_url, $token);
+    }
 
     // Prepara i dati per il ContactDetailsController
     $contactDetails = [
@@ -92,9 +111,13 @@ if ($contactData) {
     ];
 
     // Invia i dati al ContactDetailsController
-    $apiClientDetails = new ApiClient($contacts_details_url, $token);
-    $responseDetails = $apiClientDetails->sendData($contactDetails);
-    echo "Response from ContactDetailsController: " . $responseDetails . PHP_EOL;
+    try {
+        $apiClientDetails = new ApiClient($contacts_details_url, $token);
+        $responseDetails = $apiClientDetails->sendData($contactDetails);
+        echo "Response from ContactDetailsController: " . $responseDetails . PHP_EOL;
+    } catch (Exception $e) {
+        logError(__FILE__, __FUNCTION__, $e->getMessage(), $email, $platform_prefix_token, $system_log_url, $token);
+    }
 } else {
     echo "Nessun dato trovato nel database di partenza.";
 }

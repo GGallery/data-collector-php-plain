@@ -27,6 +27,7 @@ return [
     ],
     'api' => [
         'contacts_url' => 'http://localhost:8000/api/contacts',
-        'contacts_extra_url' => 'http://localhost:8000/api/contacts_extra', 
+        'contacts_details_url' => 'http://localhost:8000/api/contacts_details',
+        'system_log_url' => 'http://localhost:8000/api/system_log' 
     ],
 ];
