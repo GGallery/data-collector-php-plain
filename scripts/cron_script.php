@@ -34,14 +34,33 @@ $system_log_url = $config['api']['system_log_url']; // Aggiungi l'URL per il sys
 
 
 // Funzione per registrare gli errori nel system log
-function logError($file, $function, $message, $email, $platform_name, $system_log_url, $token) {
+function logError($file, $function, $message, $email, $platform_name, $system_log_url, $token, $errorType = 'client') {
+    static $errors = [];
+
+    // Aggiunge l'errore all'array
+    $errors[] = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'type' => $errorType,
+        'context' => [
+            'file' => $file,
+            'function' => $function,
+            'email' => $email
+        ],
+        'error' => [
+            'message' => $message,
+            'trace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)
+        ]
+    ];
+
+    // Prepara i dati per l'invio
     $logData = [
         'file' => $file,
         'function_name' => $function,
-        'message' => $message,
+        'message' => json_encode(['errors' => $errors], JSON_PRETTY_PRINT),
         'email' => $email,
         'platform_name' => $platform_name,
     ];
+
     $apiClient = new ApiClient($system_log_url, $token);
     $apiClient->sendData($logData);
 }
@@ -68,7 +87,7 @@ $tokenGenerator = new TokenGenerator($platform_prefix_token, $encryption_key, $e
 $token = $tokenGenerator->generateToken();
 
 // Recupera i dati dal database di partenza 
-$email = 'nome.cognome@.it'; // ora è un dato statico ma andrà preso dinamicamente
+$email = 'demoist@example.com'; // ora è un dato statico ma andrà preso dinamicamente
 $contactData = getContactData($db_source, $email, $prefix_table, $prefix_field);
 
 if ($contactData) {
@@ -83,7 +102,7 @@ if ($contactData) {
         $response = $apiClient->sendData($contact);
         echo "Response from ContactController: " . $response . PHP_EOL;
     } catch (Exception $e) {
-        logError(__FILE__, __FUNCTION__, $e->getMessage(), $email, $platform_prefix_token, $system_log_url, $token);
+        logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $email, $platform_prefix_token, $system_log_url, $token);
     }
 
     // Prepara i dati per il ContactDetailsController
@@ -116,7 +135,7 @@ if ($contactData) {
         $responseDetails = $apiClientDetails->sendData($contactDetails);
         echo "Response from ContactDetailsController: " . $responseDetails . PHP_EOL;
     } catch (Exception $e) {
-        logError(__FILE__, __FUNCTION__, $e->getMessage(), $email, $platform_prefix_token, $system_log_url, $token);
+        logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $email, $platform_prefix_token, $system_log_url, $token);
     }
 } else {
     echo "Nessun dato trovato nel database di partenza.";
