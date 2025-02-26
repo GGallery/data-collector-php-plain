@@ -86,11 +86,15 @@ try {
 $tokenGenerator = new TokenGenerator($platform_prefix_token, $encryption_key, $encryption_iv, $db_source);
 $token = $tokenGenerator->generateToken();
 
-// Recupera i dati dal database di partenza 
-$email = 'demoist@example.com'; // ora è un dato statico ma andrà preso dinamicamente
-$contactData = getContactData($db_source, $email, $prefix_table, $prefix_field);
 
-if ($contactData) {
+// Recupera i dati dal database di partenza
+$offset = 10; // Imposta l'offset iniziale
+$limit = 10; // Imposta il limite per ogni tranche
+
+
+$contactDataList = getContactData($db_source, $prefix_table, $prefix_field, $offset, $limit);
+
+foreach ($contactDataList as $contactData) {
     // Prepara i dati per il ContactController
     $contact = [
         'email' => $contactData['email'],
@@ -102,7 +106,7 @@ if ($contactData) {
         $response = $apiClient->sendData($contact);
         echo "Response from ContactController: " . $response . PHP_EOL;
     } catch (Exception $e) {
-        logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $email, $platform_prefix_token, $system_log_url, $token);
+        logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $contactData['email'], $platform_prefix_token, $system_log_url, $token);
     }
 
     // Prepara i dati per il ContactDetailsController
@@ -135,8 +139,6 @@ if ($contactData) {
         $responseDetails = $apiClientDetails->sendData($contactDetails);
         echo "Response from ContactDetailsController: " . $responseDetails . PHP_EOL;
     } catch (Exception $e) {
-        logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $email, $platform_prefix_token, $system_log_url, $token);
+        logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $contactData['email'], $platform_prefix_token, $system_log_url, $token);
     }
-} else {
-    echo "Nessun dato trovato nel database di partenza.";
 }

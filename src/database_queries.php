@@ -1,6 +1,6 @@
 <?php
 
-function getContactData($db_source, $email, $prefix_table, $prefix_field) {
+function getContactData($db_source, $prefix_table, $prefix_field, $offset, $limit) {
     $query = "
         SELECT 
             {$prefix_table}users.email,
@@ -27,12 +27,14 @@ function getContactData($db_source, $email, $prefix_table, $prefix_field) {
         FROM {$prefix_table}users
         INNER JOIN {$prefix_table}comprofiler 
         ON {$prefix_table}comprofiler.user_id = {$prefix_table}users.id
-        WHERE {$prefix_table}users.email = :email
+        ORDER BY {$prefix_table}comprofiler.lastupdatedate DESC
+        LIMIT :limit OFFSET :offset
     ";
     $stmt = $db_source->prepare($query); //PDOStatement
-    $stmt->bindParam(':email', $email);
+    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
-    return $stmt->fetch(PDO::FETCH_ASSOC);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // io devo partire dalla tabella ms_users utilizzando l'email per ottenere l'user_id, e poi fare la join con la tabella ms_comprofiler per ottenere gli altri dati
