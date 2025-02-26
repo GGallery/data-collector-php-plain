@@ -88,11 +88,13 @@ $token = $tokenGenerator->generateToken();
 
 
 // Recupera i dati dal database di partenza
-$offset = 10; // Imposta l'offset iniziale
+$offset = 0; // Imposta l'offset iniziale
 $limit = 10; // Imposta il limite per ogni tranche
+$startDate = '2023-01-01'; // Data di inizio per la sincronizzazione delle modifiche
+$endDate = '2023-12-31'; // Data di fine per la sincronizzazione delle modifiche
 
 
-$contactDataList = getContactData($db_source, $prefix_table, $prefix_field, $offset, $limit);
+$contactDataList = getContactData($db_source, $prefix_table, $prefix_field, $offset, $limit, $startDate, $endDate);
 
 foreach ($contactDataList as $contactData) {
     // Prepara i dati per il ContactController
