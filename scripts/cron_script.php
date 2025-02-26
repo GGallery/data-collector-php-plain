@@ -90,11 +90,9 @@ $token = $tokenGenerator->generateToken();
 // Recupera i dati dal database di partenza
 $offset = 0; // Imposta l'offset iniziale
 $limit = 10; // Imposta il limite per ogni tranche
-$startDate = '2023-01-01'; // Data di inizio per la sincronizzazione delle modifiche
-$endDate = '2023-12-31'; // Data di fine per la sincronizzazione delle modifiche
 
 
-$contactDataList = getContactData($db_source, $prefix_table, $prefix_field, $offset, $limit, $startDate, $endDate);
+$contactDataList = getContactData($db_source, $prefix_table, $prefix_field, $offset, $limit);
 
 foreach ($contactDataList as $contactData) {
     // Prepara i dati per il ContactController
@@ -141,6 +139,6 @@ foreach ($contactDataList as $contactData) {
         $responseDetails = $apiClientDetails->sendData($contactDetails);
         echo "Response from ContactDetailsController: " . $responseDetails . PHP_EOL;
     } catch (Exception $e) {
-        logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $contactData['email'], $platform_prefix_token, $system_log_url, $token);
+        logError(__FILE__, 'sendDataToContactDetailsController', $e->getMessage(), $contactData['email'], $platform_prefix_token, $system_log_url, $token);
     }
 }
