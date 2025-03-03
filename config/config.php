@@ -18,7 +18,7 @@ return [
         ],
     ],
     'platform' => [
-        'name' => '',
+        'name' => 'Prima',
         'prefix_token' => '', 
     ],
     'encryption' => [

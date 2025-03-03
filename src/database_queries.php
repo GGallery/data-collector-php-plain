@@ -1,6 +1,6 @@
 <?php
 
-function getContactData($db_source, $prefix_table, $prefix_field, $offset, $limit) {
+function getContactData($db_source, $prefix_table, $prefix_field, $offset, $limit, $startDate = null, $endDate = null) {
     $query = "
         SELECT 
             {$prefix_table}users.email,
@@ -27,12 +27,24 @@ function getContactData($db_source, $prefix_table, $prefix_field, $offset, $limi
         FROM {$prefix_table}users
         INNER JOIN {$prefix_table}comprofiler 
         ON {$prefix_table}comprofiler.user_id = {$prefix_table}users.id
-        LIMIT :limit OFFSET :offset
+        WHERE 1=1
     ";
+    
+    if ($startDate && $endDate) {
+        $query .= " AND ({$prefix_table}comprofiler.lastupdatedate BETWEEN :startDate AND :endDate)";
+    }
+
+    $query .= " ORDER BY {$prefix_table}comprofiler.lastupdatedate DESC
+                LIMIT :limit OFFSET :offset";
 
     $stmt = $db_source->prepare($query);
     $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+
+    if ($startDate && $endDate) {
+        $stmt->bindParam(':startDate', $startDate);
+        $stmt->bindParam(':endDate', $endDate);
+    }
 
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
