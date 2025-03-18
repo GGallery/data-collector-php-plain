@@ -18,7 +18,7 @@ return [
         ],
     ],
     'platform' => [
-        'name' => '',
+        'name' => 'Prima',
         'prefix_token' => '', 
     ],
     'encryption' => [
@@ -29,10 +29,5 @@ return [
         'contacts_url' => 'http://localhost:8000/api/contacts',
         'contacts_details_url' => 'http://localhost:8000/api/contacts_details',
         'system_log_url' => 'http://localhost:8000/api/system_log' 
-    ],
-    'batch' => [
-        'size' => 10, // Dimensione del batch per l'invio dei dati
-        'start_date' => '2023-01-01', // Data di inizio per la sincronizzazione
-        'end_date' => '2023-12-31', // Data di fine per la sincronizzazione
     ],
 ];

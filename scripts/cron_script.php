@@ -30,12 +30,7 @@ $encryption_iv = $config['encryption']['iv'];
 // Variabili per le API
 $contacts_url = $config['api']['contacts_url'];
 $contacts_details_url = $config['api']['contacts_details_url'];
-$system_log_url = $config['api']['system_log_url']; 
-
-// Variabili per il batch
-$batch_size = $config['batch']['size'];
-$start_date = $config['batch']['start_date'];
-$end_date = $config['batch']['end_date'];
+$system_log_url = $config['api']['system_log_url']; // Aggiungi l'URL per il system log
 
 
 // Funzione per registrare gli errori nel system log
@@ -92,81 +87,61 @@ $tokenGenerator = new TokenGenerator($platform_prefix_token, $encryption_key, $e
 $token = $tokenGenerator->generateToken();
 
 
-// Inizializza l'offset e ottiene il primo batch di dati
-$offset = 0;
-$totalProcessed = 0;
-$maxRecordsToProcess = 100; // Limite di sicurezza ciclo while
+// Recupera i dati dal database di partenza
+$offset = 0; // Imposta l'offset iniziale
+$limit = 10; // Imposta il limite per ogni tranche
+$startDate = '2023-01-01'; // Data di inizio per la sincronizzazione delle modifiche
+$endDate = '2023-12-31'; // Data di fine per la sincronizzazione delle modifiche
 
-$contactDataList = getContactData($db_source, $prefix_table, $prefix_field, $offset, $batch_size, $start_date, $end_date);
 
-// Ciclo per processare i dati in batch (con limite di sicurezza)
-while (!empty($contactDataList) && $totalProcessed < $maxRecordsToProcess) {
-    // Array per i contatti e i loro dettagli
-    $contactsBatch = [];
-    $contactDetailsBatch = [];
-    
-    // Prepara i dati per batch
-    foreach ($contactDataList as $contactData) {
-        // Contatto base
-        $contactsBatch[] = [
-            'email' => $contactData['email']
-        ];
-        
-        // Dettagli del contatto, include email per l'associazione
-        $contactDetailsBatch[] = [
-            'email' => $contactData['email'], // Email per collegare al contatto base
-            'cb_cognome' => $contactData[$prefix_field . 'cognome'] ?? '',
-            'cb_codicefiscale' => $contactData[$prefix_field . 'codicefiscale'] ?? '',
-            'cb_datadinascita' => $contactData[$prefix_field . 'datadinascita'] ?? null,
-            'cb_luogodinascita' => $contactData[$prefix_field . 'luogodinascita'] ?? '',
-            'cb_provinciadinascita' => $contactData[$prefix_field . 'provinciadinascita'] ?? '',
-            'cb_indirizzodiresidenza' => $contactData[$prefix_field . 'indirizzodiresidenza'] ?? '',
-            'cb_provdiresidenza' => $contactData[$prefix_field . 'provdiresidenza'] ?? '',
-            'cb_cap' => $contactData[$prefix_field . 'cap'] ?? '',
-            'cb_telefono' => $contactData[$prefix_field . 'telefono'] ?? '',
-            'cb_nome' => $contactData[$prefix_field . 'nome'] ?? '',
-            'cb_citta' => $contactData[$prefix_field . 'citta'] ?? '',
-            'cb_professionedisciplina' => $contactData[$prefix_field . 'professionedisciplina'] ?? '',
-            'cb_ordine' => $contactData[$prefix_field . 'ordine'] ?? '',
-            'cb_numeroiscrizione' => $contactData[$prefix_field . 'numeroiscrizione'] ?? '',
-            'cb_reclutamento' => $contactData[$prefix_field . 'reclutamento'] ?? '',
-            'cb_codicereclutamento' => $contactData[$prefix_field . 'codicereclutamento'] ?? '',
-            'cb_professione' => $contactData[$prefix_field . 'professione'] ?? '',
-            'cb_profiloprofessionale' => $contactData[$prefix_field . 'profiloprofessionale'] ?? '',
-            'cb_settore' => $contactData[$prefix_field . 'settore'] ?? '',
-            'cb_societa' => $contactData[$prefix_field . 'societa'] ?? ''
-        ];
-    }
-    
-    // Invia il batch di contatti
+$contactDataList = getContactData($db_source, $prefix_table, $prefix_field, $offset, $limit, $startDate, $endDate);
+
+foreach ($contactDataList as $contactData) {
+    // Prepara i dati per il ContactController
+    $contact = [
+        'email' => $contactData['email'],
+    ];
+
+    // Invia i dati al ContactController
     try {
         $apiClient = new ApiClient($contacts_url, $token);
-        $response = $apiClient->sendData(['contacts' => $contactsBatch]);
-        echo "Response from ContactController (batch): " . $response . PHP_EOL;
+        $response = $apiClient->sendData($contact);
+        echo "Response from ContactController: " . $response . PHP_EOL;
     } catch (Exception $e) {
-        echo "Errore durante l'invio del batch di contatti: " . $e->getMessage() . PHP_EOL;
-        logError(__FILE__, 'sendContactsBatch', $e->getMessage(), 'batch-operation', $platform_prefix_token, $system_log_url, $token);
+        logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $contactData['email'], $platform_prefix_token, $system_log_url, $token);
     }
-    
-    // Invia il batch di dettagli
+
+    // Prepara i dati per il ContactDetailsController
+    $contactDetails = [
+        'email' => $contactData['email'], 
+        'cb_cognome' => $contactData[$prefix_field . 'cognome'],
+        'cb_codicefiscale' => $contactData[$prefix_field . 'codicefiscale'],
+        'cb_datadinascita' => $contactData[$prefix_field . 'datadinascita'],
+        'cb_luogodinascita' => $contactData[$prefix_field . 'luogodinascita'],
+        'cb_provinciadinascita' => $contactData[$prefix_field . 'provinciadinascita'],
+        'cb_indirizzodiresidenza' => $contactData[$prefix_field . 'indirizzodiresidenza'],
+        'cb_provdiresidenza' => $contactData[$prefix_field . 'provdiresidenza'],
+        'cb_cap' => $contactData[$prefix_field . 'cap'],
+        'cb_telefono' => $contactData[$prefix_field . 'telefono'],
+        'cb_nome' => $contactData[$prefix_field . 'nome'],
+        'cb_citta' => $contactData[$prefix_field . 'citta'],
+        'cb_professionedisciplina' => $contactData[$prefix_field . 'professionedisciplina'],
+        'cb_ordine' => $contactData[$prefix_field . 'ordine'],
+        'cb_numeroiscrizione' => $contactData[$prefix_field . 'numeroiscrizione'],
+        'cb_reclutamento' => $contactData[$prefix_field . 'reclutamento'],
+        'cb_codicereclutamento' => $contactData[$prefix_field . 'codicereclutamento'],
+        'cb_professione' => $contactData[$prefix_field . 'professione'],
+        'cb_profiloprofessionale' => $contactData[$prefix_field . 'profiloprofessionale'],
+        'cb_settore' => $contactData[$prefix_field . 'settore'],
+        'cb_societa' => $contactData[$prefix_field . 'societa'],
+    ];
+
+    // Invia i dati al ContactDetailsController
     try {
         $apiClientDetails = new ApiClient($contacts_details_url, $token);
-        $responseDetails = $apiClientDetails->sendData(['contacts_details' => $contactDetailsBatch]);
-        echo "Response from ContactDetailsController (batch): " . $responseDetails . PHP_EOL;
+        $responseDetails = $apiClientDetails->sendData($contactDetails);
+        echo "Response from ContactDetailsController: " . $responseDetails . PHP_EOL;
     } catch (Exception $e) {
-        echo "Errore durante l'invio del batch di dettagli: " . $e->getMessage() . PHP_EOL;
-        logError(__FILE__, 'sendContactDetailsBatch', $e->getMessage(), 'batch-operation', $platform_prefix_token, $system_log_url, $token);
+        logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $contactData['email'], $platform_prefix_token, $system_log_url, $token);
     }
-    
-    // Incrementa contatori e prepara il prossimo batch
-    $totalProcessed += count($contactDataList);
-    $offset += $batch_size;
-    
-    // Ottieni il prossimo batch
-    $contactDataList = getContactData($db_source, $prefix_table, $prefix_field, $offset, $batch_size, $start_date, $end_date);
-    
-    // Piccola pausa tra i batch
-    sleep(1);
 }
-
-echo "Processo completato. Totale record elaborati: $totalProcessed\n";
