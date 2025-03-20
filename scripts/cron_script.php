@@ -16,6 +16,32 @@ $state_file_path = $config['sync']['state_file']['path'];
 $lock_file_path = $config['sync']['lock']['file'];
 $lock_timeout = $config['sync']['lock']['timeout'];
 
+// Variabili per il database di partenza
+$source_host = $config['db']['source']['host'];
+$source_dbname = $config['db']['source']['dbname'];
+$source_user = $config['db']['source']['user'];
+$source_password = $config['db']['source']['password'];
+$prefix_table = $config['db']['source']['prefix_table'];
+$prefix_field = $config['db']['source']['prefix_field'];
+
+// Variabili per il database di arrivo
+$destination_host = $config['db']['destination']['host'];
+$destination_dbname = $config['db']['destination']['dbname'];
+$destination_user = $config['db']['destination']['user'];
+$destination_password = $config['db']['destination']['password'];
+
+// Variabili per la piattaforma e la crittografia
+$platform_prefix_token = $config['platform']['prefix_token'];
+$encryption_key = $config['encryption']['key'];
+$encryption_iv = $config['encryption']['iv'];
+
+// Variabili per le API
+$contacts_url = $config['api']['contacts_url'];
+$contacts_details_url = $config['api']['contacts_details_url'];
+$system_log_url = $config['api']['system_log_url']; // Aggiungi l'URL per il system log
+
+
+
 // Assicuriamoci che la directory data esista
 $data_dir = dirname($state_file_path);
 if (!file_exists($data_dir)) {
@@ -23,7 +49,7 @@ if (!file_exists($data_dir)) {
 }
 
 // Inizializza il gestore dello stato di sincronizzazione
-$syncStateManager = new SyncStateManager($state_file_path, $config['platform']['prefix_token']);
+$syncStateManager = new SyncStateManager($state_file_path, $platform_prefix_token);
 
 // Acquisisci il lock per evitare esecuzioni concorrenti
 if (file_exists($lock_file_path)) {
@@ -52,32 +78,8 @@ $syncState = $syncStateManager->loadState();
 
 
 // Per debug
-// var_dump($syncState); die;
+// var_dump('Stato sincronizzazione', $syncState); die;
 
-
-// Variabili per il database di partenza
-$source_host = $config['db']['source']['host'];
-$source_dbname = $config['db']['source']['dbname'];
-$source_user = $config['db']['source']['user'];
-$source_password = $config['db']['source']['password'];
-$prefix_table = $config['db']['source']['prefix_table'];
-$prefix_field = $config['db']['source']['prefix_field'];
-
-// Variabili per il database di arrivo
-$destination_host = $config['db']['destination']['host'];
-$destination_dbname = $config['db']['destination']['dbname'];
-$destination_user = $config['db']['destination']['user'];
-$destination_password = $config['db']['destination']['password'];
-
-// Variabili per la piattaforma e la crittografia
-$platform_prefix_token = $config['platform']['prefix_token'];
-$encryption_key = $config['encryption']['key'];
-$encryption_iv = $config['encryption']['iv'];
-
-// Variabili per le API
-$contacts_url = $config['api']['contacts_url'];
-$contacts_details_url = $config['api']['contacts_details_url'];
-$system_log_url = $config['api']['system_log_url']; // Aggiungi l'URL per il system log
 
 
 // Inizializza contatori per le statistiche
@@ -189,6 +191,7 @@ do {
     $batchSuccess = 0;
     $batchErrors = 0;
     $maxIdProcessed = $lastId;
+    $maxUpdateDate = $startDate; // per tenere traccia della data più recente
     
     // nuovo ciclo foreach che include il tracciamento degli id e degli errori
     // Elabora ogni contatto
@@ -197,7 +200,16 @@ do {
         if (isset($contactData['id']) && $contactData['id'] > $maxIdProcessed) {
             $maxIdProcessed = $contactData['id'];
         }
-        
+
+        // Tiene traccia della data di aggiornamento più recente
+        if (isset($contactData['lastupdatedate']) && !empty($contactData['lastupdatedate']) && $contactData['lastupdatedate'] != '0000-00-00 00:00:00') {
+            $contactUpdateDate = $contactData['lastupdatedate'];
+            if ($contactUpdateDate > $maxUpdateDate) {
+                $maxUpdateDate = $contactUpdateDate;
+            }
+        }
+
+
         // Prepara i dati per il ContactController
         $contact = [
             'email' => $contactData['email'],
@@ -276,7 +288,7 @@ do {
     // Aggiorna lo stato di sincronizzazione
     $syncState['last_id_processed'] = $maxIdProcessed;
     $syncState['last_sync_date'] = date('Y-m-d H:i:s');
-    $syncState['last_update_date'] = $startDate; // Da aggiornare con la data più recente nel batch
+    $syncState['last_update_date'] = $maxUpdateDate; // Usa la data di aggiornamento più recente trovata nel batch
     $syncState['offset'] = $offset;
     $syncState['processed_records'] = $totalProcessed;
     $syncState['success_count'] = $successCount + $batchSuccess;
