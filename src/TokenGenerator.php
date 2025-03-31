@@ -22,6 +22,7 @@ class TokenGenerator
     // Genera un token criptato
     public function generateToken()
     {
+
         // Ottiene il timestamp unix corrente
         $current_time = time();
         // var_dump($current_time);

@@ -40,6 +40,7 @@ class SyncStateManager {
         
         // Decodifica il JSON
         $state = json_decode($jsonContent, true);
+        
         if (json_last_error() !== JSON_ERROR_NONE) {
             // Log dell'errore
             error_log("Errore nella decodifica dello stato JSON: " . json_last_error_msg());
@@ -49,7 +50,7 @@ class SyncStateManager {
         // Debug
         // var_dump($state); die;
         
-        // Garantisci che tutti i campi necessari siano presenti
+        // Garantisce che tutti i campi necessari siano presenti
         return array_merge($defaultState, $state);
     }
     
@@ -74,7 +75,7 @@ class SyncStateManager {
         
         // Esegui una scrittura atomica rinominando il file
         if (!rename($tempFile, $this->stateFilePath)) {
-            // Se la rinomina fallisce, prova con la copia e l'eliminazione
+            // Fallback: Se la rinomina fallisce, prova con la copia e l'eliminazione
             copy($tempFile, $this->stateFilePath);
             unlink($tempFile);
         }

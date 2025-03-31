@@ -39,7 +39,7 @@ $encryption_iv = $config['encryption']['iv'];
 $contacts_url = $config['api']['contacts_url'];
 $contacts_details_url = $config['api']['contacts_details_url'];
 $system_log_url = $config['api']['system_log_url']; // Aggiungi l'URL per il system log
-
+$sync_pointers_url = $config['api']['sync_pointers_url'];
 
 
 // Assicuriamoci che la directory data esista
@@ -296,6 +296,28 @@ do {
     
     // Salva lo stato
     $syncStateManager->saveState($syncState);
+
+    // Invia lo stato di sincronizzazione al server
+    try {
+        // Prepara i dati per l'invio al server
+        $syncPointerData = [
+            'platform_prefix' => $platform_prefix_token,
+            'last_id_processed' => $maxIdProcessed,
+            'last_sync_date' => date('Y-m-d H:i:s'),
+            'last_update_date' => $maxUpdateDate,
+            'processed_records' => $batchProcessed,
+            'success_count' => $batchSuccess,
+            'error_count' => $batchErrors
+        ];
+        
+        // Invia lo stato al server
+        $apiClient = new ApiClient($sync_pointers_url, $token);
+        $response = $apiClient->sendData($syncPointerData);
+        echo "Stato di sincronizzazione inviato al server: " . $response . PHP_EOL;
+    } catch (Exception $e) {
+        echo "Errore nell'invio dello stato di sincronizzazione al server: " . $e->getMessage() . PHP_EOL;
+        // Non blocchiamo il processo se l'invio dello stato fallisce
+    }    
     
     // Aggiorna i contatori totali
     $successCount += $batchSuccess;
@@ -318,3 +340,25 @@ echo "Successi: $successCount\n";
 echo "Errori: $errorCount\n";
 echo "ID ultimo record elaborato: {$syncState['last_id_processed']}\n";
 echo "Data ultima sincronizzazione: {$syncState['last_sync_date']}\n";
+
+
+// Invia lo stato di sincronizzazione complessivo al server alla fine del processo
+try {
+    // Prepara i dati finali per l'invio al server
+    $finalSyncPointerData = [
+        'platform_prefix' => $platform_prefix_token,
+        'last_id_processed' => $syncState['last_id_processed'],
+        'last_sync_date' => $syncState['last_sync_date'],
+        'last_update_date' => $syncState['last_update_date'],
+        'processed_records' => $totalProcessed,
+        'success_count' => $successCount,
+        'error_count' => $errorCount
+    ];
+    
+    // Invia lo stato finale al server
+    $apiClient = new ApiClient($sync_pointers_url, $token);
+    $response = $apiClient->sendData($finalSyncPointerData);
+    echo "Stato finale di sincronizzazione inviato al server: " . $response . PHP_EOL;
+} catch (Exception $e) {
+    echo "Errore nell'invio dello stato finale di sincronizzazione al server: " . $e->getMessage() . PHP_EOL;
+}
