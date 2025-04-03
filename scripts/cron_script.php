@@ -42,7 +42,7 @@ $system_log_url = $config['api']['system_log_url']; // Aggiungi l'URL per il sys
 $sync_pointers_url = $config['api']['sync_pointers_url'];
 
 
-// Assicuriamoci che la directory data esista
+// Ci assicuriamo che la directory data esista
 $data_dir = dirname($state_file_path);
 if (!file_exists($data_dir)) {
     mkdir($data_dir, 0755, true);
@@ -51,7 +51,7 @@ if (!file_exists($data_dir)) {
 // Inizializza il gestore dello stato di sincronizzazione
 $syncStateManager = new SyncStateManager($state_file_path, $platform_prefix_token);
 
-// Acquisisci il lock per evitare esecuzioni concorrenti
+// Acquisisce il lock per evitare esecuzioni concorrenti
 if (file_exists($lock_file_path)) {
     $lock_time = filemtime($lock_file_path);
     if (time() - $lock_time < $lock_timeout) {
@@ -79,7 +79,6 @@ $syncState = $syncStateManager->loadState();
 
 // Per debug
 // var_dump('Stato sincronizzazione', $syncState); die;
-
 
 
 // Inizializza contatori per le statistiche

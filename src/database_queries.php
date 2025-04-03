@@ -5,6 +5,7 @@ function getContactData($db_source, $prefix_table, $prefix_field, $offset, $limi
         SELECT 
             {$prefix_table}users.email,
             {$prefix_table}comprofiler.{$prefix_field}cognome, 
+            {$prefix_table}comprofiler.{$prefix_field}nome,
             {$prefix_table}comprofiler.{$prefix_field}codicefiscale, 
             {$prefix_table}comprofiler.{$prefix_field}datadinascita, 
             {$prefix_table}comprofiler.{$prefix_field}luogodinascita,
@@ -13,7 +14,6 @@ function getContactData($db_source, $prefix_table, $prefix_field, $offset, $limi
             {$prefix_table}comprofiler.{$prefix_field}provdiresidenza,
             {$prefix_table}comprofiler.{$prefix_field}cap,
             {$prefix_table}comprofiler.{$prefix_field}telefono,
-            {$prefix_table}comprofiler.{$prefix_field}nome,
             {$prefix_table}comprofiler.{$prefix_field}citta,
             {$prefix_table}comprofiler.{$prefix_field}professionedisciplina,
             {$prefix_table}comprofiler.{$prefix_field}ordine,
@@ -55,8 +55,8 @@ function getContactData($db_source, $prefix_table, $prefix_field, $offset, $limi
  
 function getContactDataIncrementalSync($db, $prefix_table, $prefix_field, $lastId, $offset, $limit, $startDate, $endDate) {
     // Prepara la query per il "doppio binario":
-    // 1. Nuovi record con ID > lastId
-    // 2. Record aggiornati con data_update tra startDate e endDate
+    // 1. Importa nuovi record con ID > lastId
+    // 2. Importa record modificati con data_update tra startDate e endDate
     $sql = "SELECT u.*, c.* 
             FROM {$prefix_table}users u
             JOIN {$prefix_table}comprofiler c ON u.id = c.user_id
