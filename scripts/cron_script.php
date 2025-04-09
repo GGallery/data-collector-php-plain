@@ -5,13 +5,14 @@ require_once __DIR__ . '/../src/ApiClient.php';
 require_once __DIR__ . '/../src/EncryptionHelper.php';
 require_once __DIR__ . '/../src/database_queries.php'; 
 require_once __DIR__ . '/../src/SyncStateManager.php';
+require_once __DIR__ . '/../src/ErrorLogger.php';
 
 // Carica la configurazione
 $config = require __DIR__ . '/../config/config.php';
 
 // Variabili per le configurazioni di sincronizzazione
 $batch_size = $config['sync']['batch']['size'];
-$max_records_to_process = $config['sync']['batch']['max_per_run'];
+$max_records_to_process = $config['sync']['batch']['max_per_run']; //numero massimo di record da processare in una singolo batch
 $state_file_path = $config['sync']['state_file']['path'];
 $lock_file_path = $config['sync']['lock']['file'];
 $lock_timeout = $config['sync']['lock']['timeout'];
@@ -100,39 +101,6 @@ $endDate = date('Y-m-d'); // Data odierna
 echo "Avvio sincronizzazione con: offset=$offset, lastId=$lastId, startDate=$startDate, endDate=$endDate\n";
 
 
-// Funzione per registrare gli errori nel system log
-function logError($file, $function, $message, $email, $platform_name, $system_log_url, $token, $errorType = 'client') {
-    static $errors = [];
-
-    // Aggiunge l'errore all'array
-    $errors[] = [
-        'timestamp' => date('Y-m-d H:i:s'),
-        'type' => $errorType,
-        'context' => [
-            'file' => $file,
-            'function' => $function,
-            'email' => $email
-        ],
-        'error' => [
-            'message' => $message,
-            'trace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)
-        ]
-    ];
-
-    // Prepara i dati per l'invio
-    $logData = [
-        'file' => $file,
-        'function_name' => $function,
-        'message' => json_encode(['errors' => $errors], JSON_PRETTY_PRINT),
-        'email' => $email,
-        'platform_name' => $platform_name,
-    ];
-
-    $apiClient = new ApiClient($system_log_url, $token);
-    $apiClient->sendData($logData);
-}
-
-
 // Crea una connessione al database di partenza
 try {
     $db_source = new PDO("mysql:host=$source_host;dbname=$source_dbname", $source_user, $source_password);
@@ -153,6 +121,9 @@ try {
 $tokenGenerator = new TokenGenerator($platform_prefix_token, $encryption_key, $encryption_iv, $db_source);
 $token = $tokenGenerator->generateToken();
 
+
+// Inizializza il logger degli errori
+$errorLogger = new ErrorLogger($system_log_url, $token, $platform_prefix_token);
 
 // Recupera i dati dal database di partenza
 // $offset = 10; // Imposta l'offset iniziale
@@ -186,6 +157,7 @@ do {
         break;
     }
     
+    // Variabili contatore e di riferimento per tracciare il batch
     $batchProcessed = 0;
     $batchSuccess = 0;
     $batchErrors = 0;
@@ -193,8 +165,7 @@ do {
     $maxUpdateDate = $startDate; // per tenere traccia della data più recente
     
     // nuovo ciclo foreach che include il tracciamento degli id e degli errori
-    // Elabora ogni contatto
-    foreach ($contactDataList as $contactData) {
+    foreach ($contactDataList as $contactData) { // Per ogni contatto...
         // Tieni traccia dell'ID più alto processato
         if (isset($contactData['id']) && $contactData['id'] > $maxIdProcessed) {
             $maxIdProcessed = $contactData['id'];
@@ -224,8 +195,8 @@ do {
             echo "Response from ContactController: " . $response . PHP_EOL;
             $contactSuccess = true;
         } catch (Exception $e) {
-            logError(__FILE__, 'sendDataToContactController', $e->getMessage(), $contactData['email'], $platform_prefix_token, $system_log_url, $token);
-            $batchErrors++;
+            $errorLogger->log(__FILE__, 'sendDataToContactController', $e->getMessage(), $contactData['email']);
+            $batchErrors++; //dubug: sendDataToContactController è da cambiare, è un vecchio nome
         }
         
         // Se il contatto è stato creato con successo, procedi con i dettagli
@@ -262,8 +233,8 @@ do {
                 echo "Response from ContactDetailsController: " . $responseDetails . PHP_EOL;
                 $detailsSuccess = true;
             } catch (Exception $e) {
-                logError(__FILE__, 'sendDataToContactDetailsController', $e->getMessage(), $contactData['email'], $platform_prefix_token, $system_log_url, $token);
-                $batchErrors++;
+                $errorLogger->log(__FILE__, 'sendDataToContactDetailsController', $e->getMessage(), $contactData['email']);
+                $batchErrors++; //dubug: anche qui sendDataToContactController è da cambiare, è un vecchio nome
             }
         }
         
@@ -296,7 +267,7 @@ do {
     // Salva lo stato
     $syncStateManager->saveState($syncState);
 
-    // Invia lo stato di sincronizzazione al server
+    // Invia lo stato di sincronizzazione al server per ogni batch
     try {
         // Prepara i dati per l'invio al server
         $syncPointerData = [
