@@ -163,9 +163,23 @@ do {
     $batchErrors = 0;
     $maxIdProcessed = $lastId;
     $maxUpdateDate = $startDate; // per tenere traccia della data più recente
+
+    // Contatori separati per nuovi record e aggiornamenti
+    $batchNewProcessed = 0;
+    $batchNewSuccess = 0;
+    $batchUpdateProcessed = 0;
+    $batchUpdateSuccess = 0;
     
     // nuovo ciclo foreach che include il tracciamento degli id e degli errori
     foreach ($contactDataList as $contactData) { // Per ogni contatto...
+
+       // Determina se è un record nuovo o un aggiornamento
+        $isNewRecord = isset($contactData['record_type']) && $contactData['record_type'] === 'new';
+        $isUpdateRecord = isset($contactData['record_type']) && $contactData['record_type'] === 'updated';
+        
+        // Per debug
+        // echo "Processando " . ($isNewRecord ? "NUOVO" : "AGGIORNAMENTO") . " record: " . $contactData['email'] . PHP_EOL;
+
         // Tieni traccia dell'ID più alto processato
         if (isset($contactData['id']) && $contactData['id'] > $maxIdProcessed) {
             $maxIdProcessed = $contactData['id'];
@@ -194,9 +208,17 @@ do {
             $response = $apiClient->sendData($contact);
             echo "Response from ContactController: " . $response . PHP_EOL;
             $contactSuccess = true;
+
+            // Incrementa i contatori appropriati in base al tipo di record
+            if ($isNewRecord) {
+                $batchNewSuccess++;
+            } else if ($isUpdateRecord) {
+                $batchUpdateSuccess++;
+            }
         } catch (Exception $e) {
-            $errorLogger->log(__FILE__, 'sendDataToContactController', $e->getMessage(), $contactData['email']);
-            $batchErrors++; //dubug: sendDataToContactController è da cambiare, è un vecchio nome
+            $errorType = $isNewRecord ? 'nuovo_contatto' : 'aggiornamento_contatto';
+            $errorLogger->log(__FILE__, $errorType, $e->getMessage(), $contactData['email']);
+            $batchErrors++; 
         }
         
         // Se il contatto è stato creato con successo, procedi con i dettagli
@@ -245,6 +267,15 @@ do {
         
         $batchProcessed++;
         $totalProcessed++;
+
+
+        // Incrementa i contatori per tipo
+        if ($isNewRecord) {
+            $batchNewProcessed++;
+        } else if ($isUpdateRecord) {
+            $batchUpdateProcessed++;
+        }
+        
         
         // Se abbiamo raggiunto il limite massimo di record, interrompi
         if ($totalProcessed >= $max_records_to_process) {
@@ -263,6 +294,11 @@ do {
     $syncState['processed_records'] = $totalProcessed;
     $syncState['success_count'] = $successCount + $batchSuccess;
     $syncState['error_count'] = $errorCount + $batchErrors;
+    // Aggiungi i nuovi contatori
+    $syncState['new_processed'] = isset($syncState['new_processed']) ? $syncState['new_processed'] + $batchNewProcessed : $batchNewProcessed;
+    $syncState['new_success'] = isset($syncState['new_success']) ? $syncState['new_success'] + $batchNewSuccess : $batchNewSuccess;
+    $syncState['update_processed'] = isset($syncState['update_processed']) ? $syncState['update_processed'] + $batchUpdateProcessed : $batchUpdateProcessed;
+    $syncState['update_success'] = isset($syncState['update_success']) ? $syncState['update_success'] + $batchUpdateSuccess : $batchUpdateSuccess;
     
     // Salva lo stato
     $syncStateManager->saveState($syncState);
@@ -294,6 +330,8 @@ do {
     $errorCount += $batchErrors;
     
     echo "Batch completato: processati=$batchProcessed, successo=$batchSuccess, errori=$batchErrors\n";
+    echo "  - Nuovi: processati=$batchNewProcessed, successo=$batchNewSuccess\n";
+    echo "  - Aggiornati: processati=$batchUpdateProcessed, successo=$batchUpdateSuccess\n";
     
 } while ($totalProcessed < $max_records_to_process && !empty($contactDataList));
 
@@ -310,7 +348,10 @@ echo "Successi: $successCount\n";
 echo "Errori: $errorCount\n";
 echo "ID ultimo record elaborato: {$syncState['last_id_processed']}\n";
 echo "Data ultima sincronizzazione: {$syncState['last_sync_date']}\n";
-
+echo "Nuovi record processati: {$syncState['new_processed']}\n";
+echo "Nuovi record con successo: {$syncState['new_success']}\n";
+echo "Aggiornamenti processati: {$syncState['update_processed']}\n";
+echo "Aggiornamenti con successo: {$syncState['update_success']}\n";
 
 // Invia lo stato di sincronizzazione complessivo al server alla fine del processo
 try {
@@ -322,7 +363,11 @@ try {
         'last_update_date' => $syncState['last_update_date'],
         'processed_records' => $totalProcessed,
         'success_count' => $successCount,
-        'error_count' => $errorCount
+        'error_count' => $errorCount,
+        'new_processed' => $syncState['new_processed'],
+        'new_success' => $syncState['new_success'],
+        'update_processed' => $syncState['update_processed'],
+        'update_success' => $syncState['update_success']
     ];
     
     // Invia lo stato finale al server

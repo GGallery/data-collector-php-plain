@@ -1,31 +1,71 @@
 <?php
 
-
 // Ottiene i dati dei contatti in modo incrementale usando il "doppio binario"
- 
 function getContactDataIncrementalSync($db, $prefix_table, $prefix_field, $lastId, $offset, $limit, $startDate, $endDate) {
-    // Prepara la query per il "doppio binario":
-    // 1. Importa nuovi record con ID > lastId, per il tracciamento
-    // 2. indipendentemente dal loro ID, importa record modificati tra startDate e endDate, per la gestione di lastupdatedate
-    $sql = "SELECT u.*, c.* 
-            FROM {$prefix_table}users u
-            JOIN {$prefix_table}comprofiler c ON u.id = c.user_id
-            WHERE (u.id > :lastId) 
-               OR (c.lastupdatedate BETWEEN :startDate AND :endDate 
-                  AND c.lastupdatedate != '0000-00-00 00:00:00')
-            ORDER BY u.id ASC
-            LIMIT :offset, :limit";
+    // Array che conterrà tutti i risultati
+    $allResults = [];
+    $totalRecords = 0;
+    
+    // Calcola quanti record recuperare da ciascuna query
+    $halfLimit = ceil($limit / 2);
+    
+    // ---- QUERY 1: RECUPERA I NUOVI RECORD (ID > lastId) ----
+    $sqlNew = "SELECT u.*, c.* 
+               FROM {$prefix_table}users u
+               JOIN {$prefix_table}comprofiler c ON u.id = c.user_id
+               WHERE u.id > :lastId
+               ORDER BY u.id ASC
+               LIMIT :limit";
+    
+    $stmtNew = $db->prepare($sqlNew);
+    $stmtNew->bindValue(':lastId', $lastId, PDO::PARAM_INT);
+    $stmtNew->bindValue(':limit', $halfLimit, PDO::PARAM_INT);
+    $stmtNew->execute();
+    
+    $newRecords = $stmtNew->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Aggiungi il flag 'record_type' = 'new' ai nuovi record
+    foreach ($newRecords as &$record) {
+        $record['record_type'] = 'new';
+        $allResults[] = $record;
+        $totalRecords++;
+    }
+    
+    // Calcola il limite rimanente per i record aggiornati
+    $remainingLimit = $limit - count($newRecords);
+    
+    if ($remainingLimit > 0) {
+        // ---- QUERY 2: RECUPERA I RECORD AGGIORNATI (lastupdatedate tra startDate e endDate) ----
+        // Escludi i record che hai già ottenuto nella prima query
+        $sqlUpdated = "SELECT u.*, c.* 
+                      FROM {$prefix_table}users u
+                      JOIN {$prefix_table}comprofiler c ON u.id = c.user_id
+                      WHERE u.id <= :lastId
+                      AND c.lastupdatedate BETWEEN :startDate AND :endDate 
+                      AND c.lastupdatedate != '0000-00-00 00:00:00'
+                      ORDER BY c.lastupdatedate DESC, u.id ASC
+                      LIMIT :offset, :limit";
+        
+        $stmtUpdated = $db->prepare($sqlUpdated);
+        $stmtUpdated->bindValue(':lastId', $lastId, PDO::PARAM_INT);
+        $stmtUpdated->bindValue(':startDate', $startDate, PDO::PARAM_STR);
+        $stmtUpdated->bindValue(':endDate', $endDate, PDO::PARAM_STR);
+        $stmtUpdated->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+        $stmtUpdated->bindValue(':limit', (int)$remainingLimit, PDO::PARAM_INT);
+        $stmtUpdated->execute();
+        
+        $updatedRecords = $stmtUpdated->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Aggiungi il flag 'record_type' = 'updated' ai record aggiornati
+        foreach ($updatedRecords as &$record) {
+            $record['record_type'] = 'updated';
+            $allResults[] = $record;
+            $totalRecords++;
+        }
+    }
     
     // Debug
-    // var_dump($sql, $lastId, $offset, $limit, $startDate, $endDate); die;
+    // echo "Totale: " . count($allResults) . " (Nuovi: " . count($newRecords) . ", Aggiornati: " . (isset($updatedRecords) ? count($updatedRecords) : 0) . ")\n";
     
-    $stmt = $db->prepare($sql);
-    $stmt->bindValue(':lastId', $lastId, PDO::PARAM_INT);
-    $stmt->bindValue(':startDate', $startDate, PDO::PARAM_STR);
-    $stmt->bindValue(':endDate', $endDate, PDO::PARAM_STR);
-    $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
-    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT); //limit corrisponde a $batch_size
-    $stmt->execute();
-    
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $allResults;
 }
